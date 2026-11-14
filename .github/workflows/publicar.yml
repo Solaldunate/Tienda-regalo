@@ -1,0 +1,53 @@
+name: Publicar informe de ventas
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI - Pruebas, validación e informe
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener archivos del commit
+        uses: actions/checkout@v6
+
+      - name: Preparar Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.txt
+
+      - name: Ejecutar pruebas
+        run: python -m pytest -v
+
+      - name: Validar los CSV
+        run: python validar.py
+
+      - name: Generar los HTML
+        run: python generar_informe.py
+
+      - name: Subir el sitio como artefacto
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: sitio
+
+  cd:
+    name: CD - Publicar en GitHub Pages
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publicacion.outputs.page_url }}
+    steps:
+      - name: Desplegar el sitio
+        id: publicacion
+        uses: actions/deploy-pages@v4
